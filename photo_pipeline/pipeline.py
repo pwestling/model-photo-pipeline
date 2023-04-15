@@ -8,6 +8,7 @@ import cv2
 import sys
 from segment_anything import sam_model_registry, SamPredictor
 import scipy.ndimage
+import argparse
 
 clicked_points = []
 # Parse the command-line arguments
@@ -183,7 +184,7 @@ def adjust_saturation_contrast(image, mask, saturation_scale=1.1, contrast_scale
     return result
 
 
-def apply_gradient_background(image, mask, start_color=(0, 0, 0), end_color=(70, 70, 70), gradient_start_ratio=0.5):
+def apply_gradient_background(image, mask, start_color=(0, 0, 0), end_color=(90, 90, 90), gradient_start_ratio=0.4):
     # Create a gradient background with the same size as the image
     background = np.zeros_like(image, dtype=np.float32)
     height, width, _ = image.shape
@@ -256,7 +257,7 @@ save_and_display_image(cropped_image, 'cropped_image.png')
 
 # Save the cropped image to output file
 cropped_image_pil = Image.fromarray(cropped_image)
-cropped_image_pil.save(args.output)
+cropped_image_pil.save(args.output_path)
 
 
 
