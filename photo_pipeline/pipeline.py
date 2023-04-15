@@ -10,9 +10,24 @@ from segment_anything import sam_model_registry, SamPredictor
 import scipy.ndimage
 
 clicked_points = []
-image_path = sys.argv[1]
+# Parse the command-line arguments
+parser = argparse.ArgumentParser(
+    description="Prepare an image of a model for display"
+)
+parser.add_argument(
+    "input_path", help="Path to the original image"
+)
+parser.add_argument(
+    "output_path", help="Location to write the final output image"
+)
+# Argument to show or not show intermediate debug image
+parser.add_argument(
+    "--debug", action="store_true", help="Show intermediate debug images"
+)
+args = parser.parse_args()
 
 # Get the filename
+image_path = args.input_path
 filename = os.path.basename(image_path)
 
 def show_mask(mask, ax, output_file=None, random_color=False):
@@ -83,14 +98,20 @@ def compute_mask(image):
     input_label = np.array([1] * len(clicked_points))
     print(input_point)
 
-    plt.figure(figsize=(10, 10))
-    plt.imshow(image)
-    show_points(input_point, input_label, plt.gca())
-    plt.axis('on')
-    plt.show()
+    if args.debug:
+        plt.figure(figsize=(10, 10))
+        plt.imshow(image)
+        show_points(input_point, input_label, plt.gca())
+        plt.axis('on')
+        plt.show()
 
     sam_checkpoint = "sam_vit_h_4b8939.pth"
     model_type = "vit_h"
+
+    # Check if the checkpoint exists
+    if not os.path.exists(sam_checkpoint):
+        print(f"Error: Checkpoint not found at {sam_checkpoint}. Download the checkpoint file using the link at https://github.com/facebookresearch/segment-anything#model-checkpoints ")
+        exit()
 
     device = "cpu"
 
@@ -120,13 +141,13 @@ def compute_mask(image):
             best_mask = mask
             best_score = score
 
-    plt.figure(figsize=(10,10))
-    plt.imshow(image)
-    show_mask(mask, plt.gca(), random_color=False, output_file=f"mask.png")
-    show_points(input_point, input_label, plt.gca())
-    plt.title(f"Best Mask Score: {best_score:.3f}", fontsize=18)
-    plt.axis('off')
-    plt.show()
+    if args.debug:
+        plt.figure(figsize=(10, 10))
+        plt.imshow(image)
+        show_mask(best_mask, plt.gca(), random_color=True)
+        plt.title(f"Best Mask Score: {best_score:.3f}", fontsize=18)
+        plt.axis('off')
+        plt.show()
     return best_mask
 
 if os.path.exists(mask_file):
@@ -218,12 +239,13 @@ def crop_image_with_mask(image, mask, buffer_ratio=0.25):
     return cropped_image, (top, bottom, left, right)
 
 def save_and_display_image(image, name):
-    image_pil = Image.fromarray(image)
-    image_pil.save(name)
-    plt.figure(figsize=(10, 10))
-    plt.imshow(image)
-    plt.axis('off')
-    plt.show()
+    if args.debug:
+        image_pil = Image.fromarray(image)
+        image_pil.save(name)
+        plt.figure(figsize=(10, 10))
+        plt.imshow(image)
+        plt.axis('off')
+        plt.show()
 
 saturated_image = adjust_saturation_contrast(image, best_mask)
 save_and_display_image(saturated_image, 'saturated_image.png')
@@ -231,6 +253,10 @@ gradient_image = apply_gradient_background(saturated_image, best_mask)
 save_and_display_image(gradient_image, 'gradient_image.png')
 cropped_image, (top, bottom, left, right) = crop_image_with_mask(gradient_image, best_mask)
 save_and_display_image(cropped_image, 'cropped_image.png')
+
+# Save the cropped image to output file
+cropped_image_pil = Image.fromarray(cropped_image)
+cropped_image_pil.save(args.output)
 
 
 
