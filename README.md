@@ -18,6 +18,9 @@ poetry install
 ```
 This will create a virtual environment and install the required dependencies.
 
+Additionally, you will need to download the Segment Anything model 
+from https://github.com/facebookresearch/segment-anything#model-checkpoints and place it at the root of this repository
+
 ## Usage
 To run the script, use the following command:
 
