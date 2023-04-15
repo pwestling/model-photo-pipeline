@@ -1,4 +1,4 @@
-#Model Image Preparation
+# Model Image Preparation
 This script takes an input image of a model, segments the object of interest, adjusts the saturation and contrast of the object, applies a gradient background, and crops the image to the object's bounding box.
 ## Example
 
