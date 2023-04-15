@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "photo-pipeline"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "photo_pipeline"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+segment-anything = {git = "https://github.com/facebookresearch/segment-anything.git"}
+matplotlib = "^3.7.1"
+pillow = "^9.5.0"
+torch = "^2.0.0"
+opencv-python = "^4.7.0.72"
+torchvision = "^0.15.1"
+scipy = "^1.10.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
