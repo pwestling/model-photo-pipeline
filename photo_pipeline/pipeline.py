@@ -31,11 +31,41 @@ parser.add_argument(
 parser.add_argument(
     "--smooth-mask", action="store_true", help="Run dilation/erosion on the mask to fill holes"
 )
+parser.add_argument(
+    "--device", default="cuda", help="Device to use for inference"
+)
 args = parser.parse_args()
 
 # Get the filename
 image_path = args.input_path
 filename = os.path.basename(image_path)
+image = Image.open(image_path)
+width, height = image.size
+
+image = cv2.imread(image_path)
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+mask_file = f"mask-{filename}.npy"
+
+sam_checkpoint = "sam_vit_h_4b8939.pth"
+model_type = "vit_h"
+
+# Check if the checkpoint exists
+if not os.path.exists(sam_checkpoint):
+    print(
+        f"Error: Checkpoint not found at {sam_checkpoint}. Download the checkpoint file using the link at https://github.com/facebookresearch/segment-anything#model-checkpoints ")
+    exit()
+
+device = args.device
+print("Loading model...")
+sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+sam.to(device=device)
+
+print("Creating predictor...")
+predictor = SamPredictor(sam)
+
+print("Setting image...")
+predictor.set_image(image)
+mask_image_handle = None
 
 def show_mask(mask, ax, output_file=None, random_color=False):
     if random_color:
@@ -49,8 +79,8 @@ def show_mask(mask, ax, output_file=None, random_color=False):
         mask_image_8bit = (mask_image * 255).astype(np.uint8)
         mask_image_pil = Image.fromarray(mask_image_8bit)
         mask_image_pil.save(output_file)
-
-    ax.imshow(mask_image)
+    global mask_image_handle
+    mask_image_handle = ax.imshow(mask_image)
 
 def show_points(coords, labels, ax, marker_size=375):
     pos_points = coords[labels == 1]
@@ -72,6 +102,17 @@ def on_click(event):
         x, y = int(event.xdata), int(event.ydata)
         clicked_points.append((x, y))
         print(f"Clicked point: ({x}, {y})")
+        print("Predicting...")
+        input_point = np.array(clicked_points)
+        input_label = np.array([1] * len(clicked_points))
+        masks, scores, logits = predictor.predict(
+            point_coords=input_point,
+            point_labels=input_label,
+            multimask_output=False,
+        )
+        if mask_image_handle is not None:
+            mask_image_handle.remove()
+        show_mask(masks[0], plt.gca(), random_color=False)
     elif event.button == 3:  # Right mouse button
         plt.close()
 
@@ -79,13 +120,6 @@ def on_click(event):
 if not os.path.exists(image_path):
     print(f"Error: Image not found at {image_path}")
     exit()
-
-image = Image.open(image_path)
-width, height = image.size
-
-image = cv2.imread(image_path)
-image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-mask_file = f"mask-{filename}.npy"
 
 def compute_mask(image):
     # Display the image and collect clicked points
@@ -101,68 +135,16 @@ def compute_mask(image):
 
     sys.path.append("..")
 
+    print("Predicting...")
     input_point = np.array(clicked_points)
     input_label = np.array([1] * len(clicked_points))
-    print(input_point)
-
-    if args.debug:
-        plt.figure(figsize=(10, 10))
-        plt.imshow(image)
-        show_points(input_point, input_label, plt.gca())
-        plt.axis('on')
-        plt.show()
-
-    sam_checkpoint = "sam_vit_h_4b8939.pth"
-    model_type = "vit_h"
-
-    # Check if the checkpoint exists
-    if not os.path.exists(sam_checkpoint):
-        print(f"Error: Checkpoint not found at {sam_checkpoint}. Download the checkpoint file using the link at https://github.com/facebookresearch/segment-anything#model-checkpoints ")
-        exit()
-
-    device = "cuda"
-
-    print("Loading model...")
-    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-    sam.to(device=device)
-
-    print("Creating predictor...")
-    predictor = SamPredictor(sam)
-
-    print("Setting image...")
-    predictor.set_image(image)
-
-    print("Predicting...")
     masks, scores, logits = predictor.predict(
         point_coords=input_point,
         point_labels=input_label,
-        multimask_output=True,
+        multimask_output=False,
     )
 
-    masks_with_scores = list(zip(masks, scores))
-
-    best_mask = masks_with_scores[0]
-    best_score = scores[0]
-    for i, (mask, score) in enumerate(masks_with_scores):
-        if args.debug:
-            plt.figure(figsize=(10,10))
-            plt.imshow(image)
-            show_mask(mask, plt.gca(), random_color=True)
-            plt.title(f"Candidate mask: {score:.3f}", fontsize=18)
-            plt.axis('off')
-            plt.show()
-        if score > best_score:
-            best_mask = mask
-            best_score = score
-
-    if args.debug:
-        plt.figure(figsize=(10, 10))
-        plt.imshow(image)
-        show_mask(best_mask, plt.gca(), random_color=True)
-        plt.title(f"Best Mask Score: {best_score:.3f}", fontsize=18)
-        plt.axis('off')
-        plt.show()
-    return best_mask
+    return masks[0]
 
 
 
