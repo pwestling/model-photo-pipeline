@@ -200,12 +200,15 @@ def adjust_saturation_contrast(image, mask, saturation_scale=1.1, contrast_scale
     return result
 
 def fill_mask_holes(mask, kernel_size=5, iterations=2):
+
+    mask = (mask * 255).astype(np.uint8) 
     # Create a structuring element
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
 
     # Perform dilation followed by erosion
     dilated_mask = cv2.dilate(mask, kernel, iterations=iterations)
     filled_mask = cv2.erode(dilated_mask, kernel, iterations=iterations)
+    filled_mask = filled_mask.astype(np.float32) / 255
 
     return filled_mask
 
@@ -276,6 +279,13 @@ def save_and_display_image(image, name):
 
 if args.smooth_mask:
     best_mask = fill_mask_holes(best_mask)
+    if args.debug:
+        plt.figure(figsize=(10, 10))
+        plt.imshow(image)
+        show_mask(best_mask, plt.gca(), random_color=True)
+        plt.title(f"Smoothed Mask", fontsize=18)
+        plt.axis('off')
+        plt.show()
 saturated_image = adjust_saturation_contrast(image, best_mask)
 save_and_display_image(saturated_image, 'saturated_image.png')
 gradient_image = apply_gradient_background(saturated_image, best_mask)
