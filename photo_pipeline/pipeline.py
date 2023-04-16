@@ -28,6 +28,9 @@ parser.add_argument(
 parser.add_argument(
     "--no-cache", action="store_true", help="Don't cache the image embedding"
 )
+parser.add_argument(
+    "--smooth-mask", action="store_true", help="Run dilation/erosion on the mask to fill holes"
+)
 args = parser.parse_args()
 
 # Get the filename
@@ -196,6 +199,16 @@ def adjust_saturation_contrast(image, mask, saturation_scale=1.1, contrast_scale
 
     return result
 
+def fill_mask_holes(mask, kernel_size=5, iterations=2):
+    # Create a structuring element
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
+
+    # Perform dilation followed by erosion
+    dilated_mask = cv2.dilate(mask, kernel, iterations=iterations)
+    filled_mask = cv2.erode(dilated_mask, kernel, iterations=iterations)
+
+    return filled_mask
+
 
 def apply_gradient_background(image, mask, start_color=(0, 0, 0), end_color=(90, 90, 90), gradient_start_ratio=0.4):
     # Create a gradient background with the same size as the image
@@ -261,6 +274,8 @@ def save_and_display_image(image, name):
         plt.axis('off')
         plt.show()
 
+if args.smooth_mask:
+    best_mask = fill_mask_holes(best_mask)
 saturated_image = adjust_saturation_contrast(image, best_mask)
 save_and_display_image(saturated_image, 'saturated_image.png')
 gradient_image = apply_gradient_background(saturated_image, best_mask)
