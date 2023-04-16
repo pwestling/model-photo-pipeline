@@ -11,11 +11,16 @@ python = ">=3.11,<3.12"
 segment-anything = {git = "https://github.com/facebookresearch/segment-anything.git"}
 matplotlib = "^3.7.1"
 pillow = "^9.5.0"
-torch = "^2.0.0"
 opencv-python = "^4.7.0.72"
-torchvision = "^0.15.1"
 scipy = "^1.10.1"
+torch = "^2.0.0+cu117"
 
+
+[[tool.poetry.source]]
+name = "cudatorch"
+url = "https://download.pytorch.org/whl/cu117"
+default = false
+secondary = true
 
 [build-system]
 requires = ["poetry-core"]

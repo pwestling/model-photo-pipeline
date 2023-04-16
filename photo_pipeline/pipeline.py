@@ -25,6 +25,9 @@ parser.add_argument(
 parser.add_argument(
     "--debug", action="store_true", help="Show intermediate debug images"
 )
+parser.add_argument(
+    "--no-cache", action="store_true", help="Don't cache the image embedding"
+)
 args = parser.parse_args()
 
 # Get the filename
@@ -114,7 +117,7 @@ def compute_mask(image):
         print(f"Error: Checkpoint not found at {sam_checkpoint}. Download the checkpoint file using the link at https://github.com/facebookresearch/segment-anything#model-checkpoints ")
         exit()
 
-    device = "cpu"
+    device = "cuda"
 
     print("Loading model...")
     sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
@@ -138,6 +141,13 @@ def compute_mask(image):
     best_mask = masks_with_scores[0]
     best_score = scores[0]
     for i, (mask, score) in enumerate(masks_with_scores):
+        if args.debug:
+            plt.figure(figsize=(10,10))
+            plt.imshow(image)
+            show_mask(mask, plt.gca(), random_color=True)
+            plt.title(f"Candidate mask: {score:.3f}", fontsize=18)
+            plt.axis('off')
+            plt.show()
         if score > best_score:
             best_mask = mask
             best_score = score
@@ -151,7 +161,10 @@ def compute_mask(image):
         plt.show()
     return best_mask
 
-if os.path.exists(mask_file):
+
+
+
+if not args.no_cache and os.path.exists(mask_file):
     # Load the mask from file
     print("Loading mask from file...")
     best_mask = np.load(mask_file)
